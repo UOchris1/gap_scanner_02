@@ -1,0 +1,124 @@
+# Minimal CI workflow for gap scanner validation (no real API calls)
+name: Gap Scanner Validation
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort mypy
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Lint with flake8
+      run: |
+        # Stop build if syntax errors or undefined names
+        flake8 src/ scripts/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # All Python files should pass basic linting
+        flake8 src/ scripts/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Check code formatting with black
+      run: |
+        black --check --diff src/ scripts/
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --diff src/ scripts/
+
+    - name: Type checking with mypy
+      run: |
+        mypy src/ --ignore-missing-imports --no-strict-optional
+      continue-on-error: true  # Allow type errors for now
+
+    - name: Validate ASCII encoding
+      run: |
+        python .github/scripts/validate_ascii.py
+
+    - name: Check file structure compliance
+      run: |
+        python .github/scripts/validate_structure.py
+
+    - name: Validate rule formulas (no API calls)
+      run: |
+        python -c "
+        import sys, os
+        sys.path.insert(0, 'src')
+        from src.core.rules import r1_pm, r2_open_gap, r3_push, r4_surge7
+
+        # Test rule calculations with sample data
+        assert r1_pm(10.0, 15.5) == 55.0  # 55% premarket move
+        assert r2_open_gap(20.0, 31.0) == 55.0  # 55% gap up
+        assert r3_push(15.0, 23.25) == 55.0  # 55% intraday push
+        assert r4_surge7(5.0, 25.0) == 400.0  # 400% 7-day surge
+
+        print('Rule validation: PASSED')
+        "
+
+    - name: Test imports (no external connections)
+      run: |
+        python -c "
+        import sys, os
+        sys.path.insert(0, 'src')
+
+        # Test core imports
+        from src.core.rules import r1_pm, r2_open_gap, r3_push, r4_surge7
+        from src.core.db import ensure_schema_and_indexes
+        from src.providers.theta_provider import ThetaDataClient
+        from src.providers.polygon_provider import grouped_daily
+        from src.pipelines.zero_miss import scan_day
+        from src.integration.cli_bridge import process_day_zero_miss
+
+        print('Import validation: PASSED')
+        "
+
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check for secrets in code
+      run: |
+        # Check for hardcoded API keys, passwords, etc.
+        if grep -r -i "api_key.*=" src/ scripts/ --include="*.py" | grep -v "getenv\|environ"; then
+          echo "ERROR: Hardcoded API keys found"
+          exit 1
+        fi
+
+        if grep -r -i "password.*=" src/ scripts/ --include="*.py" | grep -v "getenv\|environ"; then
+          echo "ERROR: Hardcoded passwords found"
+          exit 1
+        fi
+
+        echo "Security check: PASSED"
+
+    - name: Validate repository structure
+      run: |
+        # Ensure no prohibited files in root
+        if ls *.py 2>/dev/null | grep -E "^(test_|demo_|PROBLEM_SCRIPT)" | head -1; then
+          echo "ERROR: Prohibited Python files found in root"
+          exit 1
+        fi
+
+        # Check for data artifacts
+        if ls *.db *.csv *.jar 2>/dev/null | head -1; then
+          echo "ERROR: Data artifacts found in root"
+          exit 1
+        fi
+
+        echo "Repository structure: PASSED"

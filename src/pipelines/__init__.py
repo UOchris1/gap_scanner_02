@@ -1,0 +1,2 @@
+# -*- coding: ascii -*-
+# Pipeline modules

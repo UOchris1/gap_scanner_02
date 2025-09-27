@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit  (ASCII only)
+# Blocks new stray .py files in repo root; blocks large artifacts; enforces allowed top-level dirs.
+set -euo pipefail
+
+# Allowed top-level paths (files or directories)
+ALLOW_TOP=("src" "scripts" "tests" "docs" "project_state" ".github" ".githooks" "README.md" "CHANGELOG.md" "requirements.txt" ".gitignore" ".env.example" ".conda-env" "run_zero_miss_phase_b.py" "enhanced_db_schema.py")
+
+is_allowed_top() {
+  local top="$1"
+  for a in "${ALLOW_TOP[@]}"; do
+    [[ "$top" == "$a" ]] && return 0
+  done
+  return 1
+}
+
+fail=0
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+for f in $staged; do
+  # Derive top-level component
+  top="${f%%/*}"
+  [[ "$f" == *"/"* ]] || top="$f"
+
+  # Block Python files at repo root (only entrypoints belong in scripts/ or src/)
+  if [[ "$f" == *.py && "$f" != */* ]]; then
+    # Allow specific entrypoints
+    if [[ "$f" != "run_zero_miss_phase_b.py" && "$f" != "enhanced_db_schema.py" ]]; then
+      echo "ERROR: Python files are not allowed in repo root: $f"
+      fail=1
+    fi
+  fi
+
+  # Block heavy or binary artifacts
+  case "$f" in
+    *.db|*.sqlite|*.csv|*.parquet|*.xlsx|*.zip|*.jar|*.exe|*.bat|Thetadata_Terminal/*|out/*|reports/*|universe/*|logs/*|attic/*)
+      echo "ERROR: Artifact/binary should not be committed: $f"
+      fail=1;;
+  esac
+
+  # Ensure top-level path is allowed
+  if ! is_allowed_top "$top"; then
+    echo "ERROR: Top-level path not allowed: $top (file: $f)"
+    fail=1
+  fi
+done
+
+if [[ $fail -ne 0 ]]; then
+  echo "Commit blocked by pre-commit policy. See docs/CONTRIBUTING.md for exceptions."
+  exit 1
+fi
+
+exit 0

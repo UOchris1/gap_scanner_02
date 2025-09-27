@@ -1,0 +1,23 @@
+{
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
+  "python.defaultInterpreterPath": "C:\\Users\\socra\\anaconda3\\envs\\stat_project\\python.exe",
+  "terminal.integrated.defaultProfile.windows": "Command Prompt",
+  "files.exclude": {
+    "**/*.pyc": true,
+    "__pycache__": true,
+    "*.db-shm": true,
+    "*.db-wal": true
+  },
+  "editor.renderControlCharacters": true,
+  "editor.unicodeHighlight.ambiguousCharacters": true,
+  "editor.unicodeHighlight.nonBasicASCII": true,
+  "claudeCode.customInstructions": "Read .claude_rules file and follow all rules strictly",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": true,
+  "files.associations": {
+    ".claude_rules": "markdown"
+  }
+}

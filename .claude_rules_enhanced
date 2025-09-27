@@ -1,0 +1,279 @@
+# ENHANCED CLAUDE CODE RULES - PROFESSIONAL WORKFLOW v2.0
+# Based on AI Builder Club advanced patterns
+
+## MANDATORY WORKFLOW: PLAN-FIRST ARCHITECTURE
+
+### 1. SESSION START PROTOCOL
+BEFORE any work:
+1. CHECK: project_state/context_current.md for session continuity
+2. ENTER PLAN MODE: Create detailed plan in project_state/tasks/TASKNAME_YYYYMMDD.md
+3. PLAN MUST INCLUDE:
+   - Implementation approach with provider fallback strategy
+   - Testing approach and success criteria
+   - Integration points with existing schema/indexes
+   - Risk assessment and rollback plan
+4. WAIT for user approval before implementing
+5. UPDATE: project_state/context_current.md with new session context
+
+### 2. IMPLEMENTATION PROTOCOL
+During work:
+1. USE specialized subagents for complex tasks:
+   - provider-integration: For ThetaData/Polygon/FMP API work
+   - db-optimizer: For schema and index optimization
+   - rule-validator: For R1-R4 rule testing
+2. UPDATE task file with changes as you work
+3. RUN automatic validation after each major change
+4. MAINTAIN TodoWrite task tracking throughout
+
+### 3. SESSION END PROTOCOL
+After completion:
+1. UPDATE project_state/context_current.md with:
+   - What was changed and why
+   - Testing performed and results
+   - Next steps for handoff
+   - Provider status and performance metrics
+2. ARCHIVE task file to project_state/tasks/completed/
+
+## SPECIALIZED SUBAGENT CONFIGURATIONS
+
+### provider-integration Agent
+USE FOR: All API integration work with ThetaData, Polygon, or FMP
+CAPABILITIES:
+- Connection testing and health checks
+- Fallback chain implementation (v3->v1->Polygon)
+- Concurrency management (4 concurrent for ThetaData)
+- Error handling (429, 571, 474 codes)
+OUTPUT: Update provider_status.md with results
+
+### db-optimizer Agent
+USE FOR: Database schema changes and performance optimization
+CAPABILITIES:
+- Schema validation against enhanced_db_schema.py
+- Index application from scripts/apply_db_indexes.py
+- WAL mode and PRAGMA optimization
+- Query performance analysis
+OUTPUT: Update db_performance.md with metrics
+
+### rule-validator Agent
+USE FOR: R1-R4 rule implementation and testing
+CAPABILITIES:
+- Rule calculation verification
+- Sample data testing
+- Split detection validation
+- Audit sampling logic
+OUTPUT: Update rule_validation.md with test results
+
+## FILE ORGANIZATION RULES (ENHANCED)
+
+### DIRECTORY STRUCTURE (ENFORCED)
+```
+gap_scanner_01/
+├── src/                    # Core package (NEW)
+│   ├── core/              # Rules, DB, utils
+│   ├── providers/         # API adapters
+│   ├── pipelines/         # Discovery logic
+│   └── integration/       # CLI bridges
+├── scripts/               # Utilities only
+├── project_state/         # Session management (ENHANCED)
+│   ├── tasks/            # Task planning files
+│   ├── completed/        # Archived tasks
+│   ├── artifacts/        # Test outputs
+│   └── logs/             # Execution logs
+├── .claude/               # Claude Code configuration (NEW)
+│   ├── commands/         # Custom commands
+│   ├── hooks/            # Validation hooks
+│   └── settings.json     # Hook configuration
+└── tests/                 # Organized testing
+```
+
+### PROHIBITED ACTIONS
+- NEVER create test_*.py files in root directory
+- NEVER create demo_*.py or PROBLEM_SCRIPT_* files
+- NEVER create duplicate functionality files
+- NO workaround scripts - FIX existing code
+- NO fake/mock data - DEBUG real integration
+
+## PROVIDER INTEGRATION RULES (ENHANCED)
+
+### FALLBACK HIERARCHY (IMMUTABLE)
+1. PRIMARY: ThetaData v3 (port 25503, param="symbol")
+2. SECONDARY: ThetaData v1 (port 25510, param="root")
+3. TERTIARY: Polygon API
+4. VALIDATION: FMP (daily data validation only)
+
+### CONCURRENCY MANAGEMENT
+```python
+# ThetaData Standard Plan: 4 concurrent maximum
+theta_semaphore = threading.Semaphore(4)
+
+def bounded_request(url, params):
+    with theta_semaphore:
+        response = session.get(url, params, timeout=30)
+        if response.status_code in [429, 571, 474]:
+            time.sleep(0.3)  # Backoff
+        return response
+```
+
+### ERROR HANDLING (MANDATORY)
+- 429 (Rate Limit): Exponential backoff, retry max 3x
+- 571 (Server Starting): Wait 30s, retry max 2x
+- 474 (Disconnected): Attempt reconnect, fallback to v1
+- Log all provider switches to provider_status.md
+
+## GAP DISCOVERY RULES (IMMUTABLE)
+
+### R1-R4 CALCULATIONS (ASCII FORMULA FORMAT)
+```
+R1_PREMARKET: ((premarket_high / prev_close) - 1) * 100 >= 50.0
+R2_OPEN_GAP:  ((open / prev_close) - 1) * 100 >= 50.0
+R3_INTRADAY:  ((high / open) - 1) * 100 >= 50.0
+R4_SURGE_7D:  ((highest_high_7d / lowest_low_7d) - 1) * 100 >= 300.0
+```
+
+### PREMARKET WINDOW
+- START: 04:00:00 ET (NYSE Arca extended hours)
+- END: 09:29:59 ET (market open - 1 second)
+- TIMEZONE: America/New_York (handle DST automatically)
+
+### REVERSE SPLIT GATE
+- WINDOW: 1 trading day (configurable to 2)
+- HEAVY RUNNER OVERRIDE: dollar_volume >= $10,000,000 AND intraday_push >= 50%
+- SPLIT DETECTION: Use Polygon /v3/reference/splits endpoint
+- GATE LOGIC: Suppress split_artifact hits unless heavy runner criteria met
+
+## AUTOMATED VALIDATION HOOKS
+
+### POST-FILE-CHANGE VALIDATION
+After any Write/Edit/MultiEdit:
+1. ASCII encoding verification
+2. Import syntax check
+3. R1-R4 rule formula validation
+4. Provider connection test
+5. Database schema compatibility
+
+### PRE-COMMIT VALIDATION
+Before any git operations:
+1. No test_*.py files in root
+2. No binary artifacts (*.db, *.csv, *.jar)
+3. All Python files have ASCII header
+4. src/ structure maintained
+
+## TROUBLESHOOTING PROTOCOL (ENHANCED)
+
+### 3-ATTEMPT RULE WITH ESCALATION
+1. ATTEMPT 1-3: Debug existing code, check provider status
+2. AFTER 3 FAILURES:
+   - Create project_state/HELP_REQUEST_YYYYMMDD_HHMMSS.md
+   - Include: Error details, provider status, attempts made
+   - RUN: provider health check and log results
+   - PRINT: "EXTERNAL HELP NEEDED - See HELP_REQUEST file"
+   - STOP all work and WAIT for response
+
+### HELP REQUEST TEMPLATE
+```markdown
+# HELP REQUEST - [TIMESTAMP]
+
+## Problem Summary
+[One line description]
+
+## Provider Status
+- ThetaData v3 (25503): [OK/FAIL/TIMEOUT]
+- ThetaData v1 (25510): [OK/FAIL/TIMEOUT]
+- Polygon API: [OK/FAIL/NO_KEY]
+- FMP API: [OK/FAIL/NO_KEY]
+
+## Attempts Made
+1. [Attempt 1 description and result]
+2. [Attempt 2 description and result]
+3. [Attempt 3 description and result]
+
+## Specific Question
+[What exactly do you need help with?]
+
+## Environment Info
+- OS: Windows 11
+- Python: 3.10 (conda env: stat_project)
+- Last working state: [description]
+```
+
+## ENCODING STANDARDS (STRICT)
+
+### ASCII-ONLY REQUIREMENTS
+- ALL file outputs must use encoding='ascii', errors='replace'
+- NO Unicode characters: emojis, smart quotes, em-dashes
+- REPLACE: -- with --, " with ", ' with ', ... with ...
+- FILE HEADERS: Every Python file starts with:
+```python
+# -*- coding: ascii -*-
+# ASCII-only output enforced
+```
+
+## TASKMASTER INTEGRATION (ENHANCED)
+
+### MANDATORY TASK TRACKING
+- USE TodoWrite for ALL tasks and subtasks
+- NEVER work without active task tracking
+- UPDATE task status after each completion
+- BREAK complex work into tracked subtasks
+
+### TASK CONTEXT FILES
+- CREATE project_state/tasks/TASKNAME_YYYYMMDD.md for each major task
+- INCLUDE implementation plan, testing approach, success criteria
+- UPDATE with progress and decisions during work
+- ARCHIVE to project_state/tasks/completed/ when done
+
+## CUSTOM COMMAND DEFINITIONS
+
+### /validate-scanner
+Comprehensive system check:
+1. Provider connection tests (all 4 endpoints)
+2. Database schema validation
+3. R1-R4 rule implementation check
+4. File structure compliance
+5. ASCII encoding verification
+Output: Structured validation report
+
+### /provider-test
+Provider fallback chain test:
+1. Test ThetaData v3 with sample symbol
+2. Test v1 fallback on failure
+3. Test Polygon fallback
+4. Log timing and success/failure
+5. Update provider_status.md
+
+### /rule-test
+R1-R4 rule validation:
+1. Test each rule with known sample data
+2. Verify threshold calculations
+3. Test split detection logic
+4. Validate audit sampling
+5. Update rule_validation.md
+
+## PROJECT STATE MANAGEMENT
+
+### SESSION CONTINUITY
+- CHECK project_state/context_current.md at session start
+- UPDATE with new session context and objectives
+- LOG all significant decisions and changes
+- MAINTAIN provider status and performance metrics
+
+### ARTIFACT ORGANIZATION
+- TEST outputs: project_state/artifacts/
+- LOGS: project_state/logs/
+- COMPLETED tasks: project_state/tasks/completed/
+- HELP requests: project_state/HELP_REQUEST_*.md
+
+## INTEGRATION WITH EXISTING CODEBASE
+
+### MANDATORY REUSE
+- USE enhanced_db_schema.py for all database operations
+- USE scripts/apply_db_indexes.py for performance optimization
+- INTEGRATE with existing run_zero_miss_phase_b.py CLI
+- PRESERVE existing provider detection logic
+
+### BACKWARD COMPATIBILITY
+- MAINTAIN existing function signatures where possible
+- PROVIDE migration path for legacy components
+- DOCUMENT all breaking changes in project_state/migration_log.md
+
+This enhanced rule set transforms your gap scanner into a professional-grade Claude Code project with proper workflow management, specialized subagents, automated validation, and robust session continuity.

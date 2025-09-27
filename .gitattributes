@@ -1,0 +1,4 @@
+# ASCII-only policy and cross-platform endings
+*.sh text eol=lf
+*.bat text eol=crlf
+*.py text eol=lf

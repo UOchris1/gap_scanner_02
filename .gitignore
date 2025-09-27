@@ -1,0 +1,162 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# SQLite temporary files
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Environment and configuration - CRITICAL SECURITY
+.env
+.env.*
+*.env
+*.env.*
+.env.local
+.env.production
+.env.development
+.env.staging
+.env.test
+.env.backup
+*.key
+*.pem
+*.p12
+*.pfx
+config.json
+config.yaml
+config.yml
+secrets.json
+secrets.yaml
+secrets.yml
+
+# IDE and editor files
+.vscode/settings.json.user
+*.swp
+*.swo
+*~
+
+# Operating system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing and development artifacts
+*_20[0-9][0-9][0-9][0-9][0-9][0-9]_*.csv
+*_20[0-9][0-9][0-9][0-9][0-9][0-9]_*.json
+test_results/
+coverage/
+.pytest_cache/
+
+# Log files
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Data artifacts and binaries
+*.db
+*.sqlite
+*.csv
+*.parquet
+*.xlsx
+*.zip
+*.jar
+*.exe
+*.bat
+out/
+reports/
+universe/
+Thetadata_Terminal/
+exports/
+validation_results/
+weekly_export/
+gap_scanner_01_drive_share/
+chatgpt_pm_package/
+
+# Windows reserved device file accidentally present
+nul
+
+# Runtime and temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Claude Code specific (exclude local settings and caches)
+.claude/
+!.claude_rules
+!.claude_rules_enhanced
+
+# Local environment snapshot (do not commit)
+.conda-env
+
+# Production database (keep schema, ignore data)
+scanner.db
+
+# Archive directory (development artifacts)
+archive/
+attic/
+
+# Large datasets (should be downloaded separately)
+data/
+datasets/
+raw_instructions/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Behavioral control
+project_state/HELP_REQUEST.md
+project_state/HELP_RESPONSE.md
+project_state/attempt_counter.json
+
+# Additional security patterns
+*password*
+*secret*
+*private*
+*credentials*
+*auth*
+*token*
+*.ssh/
+ssh_keys/
+private_keys/
+certificates/
+
+# API and database backups
+*.env.backup
+*.env.bak
+*.db.backup
+*.db.bak
+api_keys_backup.*
+credentials_backup.*
+
+# Security audit files (keep script, ignore backups)
+*_backup.env
+*_backup.key
+
+# Cloud and deployment secrets
+terraform.tfvars
+.terraform/
+docker-compose.override.yml
+kubernetes-secrets.yaml
+helm-values.yaml
+
+# Test artifacts (keep organized)
+project_state/artifacts/*
+!project_state/artifacts/.gitkeep
+project_state/*.json
+project_state/*.md
+scripts/project_state/
+
+# Optional local/dev helpers
+claude_wrapper.py
+test_*.py
