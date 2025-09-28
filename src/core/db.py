@@ -28,6 +28,7 @@ def ensure_schema_and_indexes(db_path: str) -> None:
         # De-duplicate rule rows and enforce uniqueness going forward
         try:
             cur = c.cursor()
+            # Remove duplicates (keep first per (hit_id, trigger_rule))
             cur.execute(
                 """
                 DELETE FROM discovery_hit_rules
@@ -37,16 +38,20 @@ def ensure_schema_and_indexes(db_path: str) -> None:
                 )
                 """
             )
+            # Enforce uniqueness going forward
             cur.execute(
                 """
                 CREATE UNIQUE INDEX IF NOT EXISTS uq_hit_rule
                 ON discovery_hit_rules(hit_id, trigger_rule)
-            try:
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_disc_hits_date_venue_src ON discovery_hits(event_date, pm_high_source, pm_high_venue)")
-            except Exception:
-                pass
                 """
             )
+            # Helpful composite index for common filters
+            try:
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_disc_hits_date_venue_src ON discovery_hits(event_date, pm_high_source, pm_high_venue)"
+                )
+            except Exception:
+                pass
             c.commit()
         except Exception as e:
             print(f"[WARN] Could not enforce rule uniqueness: {e}")

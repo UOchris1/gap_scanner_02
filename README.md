@@ -1,254 +1,61 @@
-# Gap Scanner Project
+# Gap Scanner 02
 
-A comprehensive market gap detection and analysis system that identifies and validates stock price gaps using multiple data sources and advanced filtering rules.
+Single-entry gap scanner with one CLI, one pipeline, and an optional thin Streamlit UI. Clean, portable, and driven by `.env`.
 
-## ???? SECURITY FIRST
+## Security
 
-**CRITICAL SECURITY REQUIREMENTS:**
-- NEVER commit `.env` files to version control
-- NEVER share API keys in code, comments, or documentation
-- ALWAYS use environment variables for sensitive configuration
-- Regularly rotate your API keys
-- Monitor API usage for unusual activity
+- Never commit `.env` or real keys
+- Use environment variables for secrets
+- `scripts/env_tools.py` provides `env-format` and `env-validate`
 
-## ???? Table of Contents
+## Quick Start
 
-- [Overview](#overview)
-- [Security Setup](#security-setup)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [API Providers](#api-providers)
-- [Development](#development)
-- [Troubleshooting](#troubleshooting)
-
-## ???? Overview
-
-The Gap Scanner Project is a sophisticated market analysis tool that:
-
-- **Detects Price Gaps**: Identifies significant price gaps (???50%) in stock market data
-- **Multi-Source Validation**: Uses Polygon.io, ThetaData, Alpaca, and FMP for comprehensive coverage
-- **Advanced Filtering**: Applies volume, market cap, and split-detection rules
-- **Zero-Miss Pipeline**: Ensures comprehensive gap detection with minimal false negatives
-- **Performance Monitoring**: Tracks system performance and data quality metrics
-
-### Key Features
-
-- Real-time gap detection and historical analysis
-- Multi-provider data aggregation and validation
-- Comprehensive split detection and adjustment
-- Performance benchmarking and validation
-- Automated reporting and export capabilities
-
-## ???? Security Setup
-
-### 1. Environment Configuration
-
-1. **Copy the environment template:**
-   ```bash
-   cp .env.example .env
-   ```
-
-2. **Edit `.env` with your actual API keys:**
-   ```bash
-   # NEVER use these placeholder values in production
-   POLYGON_API_KEY="your_actual_polygon_key_here"
-   ALPACA_API_KEY="your_actual_alpaca_key_here"
-   ALPACA_SECRET_KEY="your_actual_alpaca_secret_here"
-   FMP_API_KEY="your_actual_fmp_key_here"
-   ```
-
-3. **Verify `.env` is gitignored:**
-   ```bash
-   git check-ignore .env
-   # Should return: .env
-   ```
-
-### 2. API Key Security Guidelines
-
-| Provider | Security Level | Notes |
-|----------|---------------|-------|
-| **Polygon.io** | HIGH | Rate limited, read-only recommended |
-| **Alpaca** | CRITICAL | Use paper trading keys for development |
-| **ThetaData** | MEDIUM | Local terminal required |
-| **FMP** | MEDIUM | Rate limited, monitor usage |
-
-### 3. Security Checklist
-
-- [ ] `.env` file is never committed to git
-- [ ] All API keys use environment variables
-- [ ] Production vs development keys are separated
-- [ ] API rate limits are configured
-- [ ] Key rotation schedule is established
-- [ ] Access logging is enabled
-
-## ???? Installation
-
-### Prerequisites
-
-- Python 3.8+ (3.10+ recommended)
-- ThetaData Terminal (for real-time data)
-- Git
-
-### Step 1: Clone Repository
+Prereqs: Python 3.10, Git, optional ThetaData Terminal (for R1 premarket)
 
 ```bash
 git clone <repository-url>
-cd gap_scanner_01
-```
-
-### Step 2: Create Virtual Environment
-
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\\Scripts\\activate
-# macOS/Linux:
-source venv/bin/activate
-```
-
-### Step 3: Install Dependencies
-
-```bash
+cd gap_scanner_02
+py -3.10 -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+
+copy .env.example .env   # then edit with your keys
+python -m scripts.gapctl env-format
+python -m scripts.gapctl env-validate
+python -m scripts.gapctl health
+
+# run a day or range
+python -m scripts.gapctl scan-day --date 2025-09-26 --db db/scanner.db
+python -m scripts.gapctl scan-range --start 2025-09-22 --end 2025-09-26 --db db/scanner.db
+
+# export
+python -m scripts.gapctl export --start 2025-09-22 --end 2025-09-26 --db db/scanner.db --out exports
+
+# acceptance (Theta Terminal recommended)
+python -m scripts.gapctl validate --date 2025-09-26 --db db/acceptance.db
 ```
 
-### Step 4: Environment Setup
+## Streamlit (optional)
 
 ```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit .env with your API keys (NEVER commit this file)
-# See Configuration section for details
+streamlit run app/scan_ui.py
 ```
 
-### Step 5: Verify Installation
+## Entrypoints
 
-```bash
-# Run quick baseline test
-python quick_baseline_test.py
+- CLI: `scripts/gapctl.py`
+- Shim: `src/integration/cli_bridge.py`
+- Pipeline: `src/pipelines/zero_miss.py`
+- Providers: `src/providers/*`
+- Exports: `scripts/export_reports.py`
 
-# Run system validation
-python run_baseline_validation.py
-```
+## Environment (.env)
 
-## ?????? Configuration
+- `POLYGON_API_KEY` (required)
+- `FMP_API_KEY` (optional)
+- `THETA_V3_URL` / `THETA_V1_URL` (optional, defaults to localhost)
 
-### Required API Keys
-
-| Provider | Purpose | Get Key From | Required |
-|----------|---------|--------------|----------|
-| **Polygon.io** | Market data | [polygon.io](https://polygon.io/) | ??? Yes |
-| **Alpaca** | Baseline validation | [alpaca.markets](https://alpaca.markets/) | ??? Yes |
-| **FMP** | Fundamental data | [financialmodelingprep.com](https://financialmodelingprep.com/) | ??? Yes |
-| **ThetaData** | Real-time data | Local terminal | ?????? Optional |
-
-### Environment Variables
-
-Edit your `.env` file with these required settings:
-
-```bash
-# Core API Keys (REQUIRED)
-POLYGON_API_KEY="your_polygon_key"
-ALPACA_API_KEY="your_alpaca_key"
-ALPACA_SECRET_KEY="your_alpaca_secret"
-FMP_API_KEY="your_fmp_key"
-
-# ThetaData Configuration (OPTIONAL)
-THETA_V3_URL=http://127.0.0.1:25503
-THETA_V1_URL=http://127.0.0.1:25510
-
-# Application Settings
-LOG_LEVEL=INFO
-OUTPUT_DIR=data/outputs
-```
-
-### ThetaData Terminal Setup
-
-1. Download ThetaData Terminal from [thetadata.net](https://www.thetadata.net/)
-2. Install and run the terminal application
-3. Verify connection: Terminal should be accessible at `localhost:25503`
-
-## ???? Usage
-
-### Quick Start
-
-```bash
-# 1. Run baseline validation
-python run_baseline_validation.py
-
-# 2. Run 10-day validation
-python run_10day_validation.py
-
-# 3. Run zero-miss pipeline
-python run_zero_miss.py --date 2024-01-15
-
-# 4. Generate reports
-python scripts/export_reports.py
-```
-
-### Main Scripts
-
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `run_zero_miss.py` | Core gap detection | `python run_zero_miss.py --date YYYY-MM-DD` |
-| `run_baseline_validation.py` | System validation | `python run_baseline_validation.py` |
-| `run_10day_validation.py` | Multi-day analysis | `python run_10day_validation.py` |
-| `scripts/export_reports.py` | Generate reports | `python scripts/export_reports.py` |
-
-### Advanced Usage
-
-```bash
-# Run with specific database
-python run_zero_miss.py --date 2024-01-15 --db custom.db
-
-# Export specific date range
-python scripts/export_reports.py --start 2024-01-01 --end 2024-01-31
-
-# Validate with custom thresholds
-python run_baseline_validation.py --threshold 0.01
-```
-
-## ???? Project Structure
-
-```
-gap_scanner_01/
-????????? ???? README.md                    # This file
-????????? ???? .env.example                 # Environment template
-????????? ???? .gitignore                   # Git ignore patterns
-????????? ???? requirements.txt             # Python dependencies
-?????????
-????????? ???? Main Scripts
-????????? run_zero_miss.py               # Core gap detection pipeline
-????????? run_baseline_validation.py     # System validation
-????????? run_10day_validation.py        # Multi-day analysis
-?????????
-????????? ???? src/                        # Source code
-???   ????????? core/                      # Core functionality
-???   ???   ????????? db.py                  # Database operations
-???   ???   ????????? rules.py               # Gap detection rules
-???   ???   ????????? database_operations.py # Enhanced DB ops
-???   ????????? providers/                 # Data providers
-???   ???   ????????? polygon_provider.py    # Polygon.io integration
-???   ???   ????????? theta_provider.py      # ThetaData integration
-???   ???   ????????? fundamentals_provider.py # FMP integration
-???   ????????? pipelines/                 # Data pipelines
-???       ????????? zero_miss.py           # Zero-miss pipeline
-?????????
-????????? ???? scripts/                    # Utility scripts
-???   ????????? export_reports.py          # Report generation
-???   ????????? alpaca_baseline.py         # Alpaca validation
-???   ????????? validate_splits_and_providers.py # Data validation
-?????????
-????????? ???? db/                         # Database files
-????????? ???? out/                        # Output files
-????????? ???? logs/                       # Log files
-```
+See `.env.example` for a template.
 
 ## ???? API Providers
 
