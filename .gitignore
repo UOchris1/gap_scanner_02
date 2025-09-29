@@ -81,6 +81,7 @@ validation_results/
 weekly_export/
 gap_scanner_01_drive_share/
 chatgpt_pm_package/
+chatgpt_package/
 
 # Windows reserved device file accidentally present
 nul

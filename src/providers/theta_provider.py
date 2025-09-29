@@ -61,6 +61,7 @@ THETA_V3_MAX_OUTSTANDING = int(os.getenv("THETA_V3_MAX_OUTSTANDING", "2"))
 THETA_V1_MAX_OUTSTANDING = int(os.getenv("THETA_V1_MAX_OUTSTANDING", "2"))
 PM_START = os.getenv("PM_START", "04:00:00")
 PM_END = os.getenv("PM_END", "09:29:59")
+THETA_MAX_472_LOGS = int(os.getenv("THETA_MAX_472_LOGS", "3"))
 
 
 def _log(msg: str) -> None:
@@ -318,6 +319,7 @@ class ThetaDataProvider:
         delay = self.backoff_base if self.backoff_base > 0 else 0.5
 
         for i in range(attempts):
+            count_472 = None
             try:
                 resp = bounded.get(url, params)
                 code = resp.status_code
@@ -335,6 +337,7 @@ class ThetaDataProvider:
                             cc["204"] += 1
                         elif code == 472:
                             cc["472"] += 1
+                            count_472 = cc["472"]
                         else:
                             cc["other"] += 1
                 except Exception:
@@ -366,7 +369,13 @@ class ThetaDataProvider:
 
                 if code == 472:
                     # 472 = NO_DATA - expected for symbols without premarket activity on nqb venue
-                    _log(f"{v} non-200 472: No data found for your request")
+                    log_472 = True
+                    if THETA_MAX_472_LOGS >= 0:
+                        seen = count_472 if count_472 is not None else 0
+                        if seen > THETA_MAX_472_LOGS:
+                            log_472 = False
+                    if log_472:
+                        _log(f"{v} non-200 472: No data found for your request")
                     return None
 
                 if code != 200:
