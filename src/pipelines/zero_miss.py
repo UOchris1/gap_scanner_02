@@ -228,13 +228,17 @@ def scan_day(date_iso: str, db_path: str) -> Dict:
 
         # Hard time cap at 8 minutes for Theta premarket phase
         start_pm = time.time()
-        worker_env = os.getenv("R1_THREAD_WORKERS", "32")
+        # Match worker count to semaphore limit to prevent deadlock
+        # Default to 4 (THETA_V3_MAX_OUTSTANDING default is 2, but allow some buffer)
+        worker_env = os.getenv("R1_THREAD_WORKERS", "4")
         try:
             workers = int(worker_env)
         except Exception:
-            workers = 32
+            workers = 4
         if workers < 1:
             workers = 1
+        # Cap at 8 to prevent overwhelming the semaphore (default limit is 2)
+        workers = min(workers, 8)
 
         def _fetch_theta(symbol: str):
             pmh, pm_src, pm_ven = (None, None, None)

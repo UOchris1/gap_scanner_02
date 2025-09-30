@@ -108,8 +108,14 @@ class _BoundedSession:
         self.sess.mount("https://", adapter)
 
     def get(self, url: str, params: Dict[str, Any]) -> requests.Response:
-        with self.sem:
+        # Use semaphore with timeout to prevent indefinite blocking
+        acquired = self.sem.acquire(timeout=self.timeout)
+        if not acquired:
+            raise TimeoutError(f"Failed to acquire semaphore within {self.timeout}s")
+        try:
             return self.sess.get(url, params=params, timeout=self.timeout)
+        finally:
+            self.sem.release()
 
 
 class ThetaDataProvider:

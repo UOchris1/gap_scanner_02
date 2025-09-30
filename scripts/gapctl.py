@@ -4,6 +4,7 @@
 import argparse
 import os
 import sys
+import subprocess
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -154,6 +155,29 @@ def cmd_outcomes(args) -> int:
     print(f"[OUTCOMES] wrote {out_csv}")
     return 0
 
+
+def cmd_charts_ingest(args) -> int:
+    from src.pipelines.charts_ingest import ingest_from_csv
+    result = ingest_from_csv(args.db, args.csv, args.limit)
+    print(result)
+    return 0 if result.get("status") == "ok" else 2
+
+def cmd_charts_inventory(args) -> int:
+    from app.dash_app import list_symbols_and_dates
+    syms, date_map = list_symbols_and_dates(args.db, hits_only=True)
+    for s in syms:
+        dates = date_map.get(s, [])
+        preview = ", ".join(dates[:25])
+        suffix = " ..." if len(dates) > 25 else ""
+        print(f"{s}: {preview}{suffix}")
+    return 0
+
+def cmd_dash(args) -> int:
+    env = os.environ.copy()
+    env["GAP_DB_PATH"] = args.db
+    env["GAP_DASH_PORT"] = str(args.port)
+    return subprocess.call([sys.executable, "-m", "app.dash_app"], env=env)
+
 def cmd_validate(args) -> int:
     # Reuse the acceptance script
     from scripts.validate_acceptance import main as validate_main
@@ -248,6 +272,21 @@ def build_parser() -> argparse.ArgumentParser:
     oc.add_argument("--db", default="db/scanner.db")
     oc.add_argument("--out", default="exports")
     oc.set_defaults(func=cmd_outcomes)
+
+    ig = sp.add_parser("charts-ingest", help="Ingest 1m/5m/daily bars for hits from a CSV")
+    ig.add_argument("--csv", required=True, help="CSV with symbol/ticker and trigger_date/date")
+    ig.add_argument("--db", default="db/scanner.db")
+    ig.add_argument("--limit", type=int, default=None)
+    ig.set_defaults(func=cmd_charts_ingest)
+
+    ii = sp.add_parser("charts-inventory", help="List symbols & available dates in bars_5m")
+    ii.add_argument("--db", default="db/scanner.db")
+    ii.set_defaults(func=cmd_charts_inventory)
+
+    da = sp.add_parser("dash", help="Run Plotly Dash viewer")
+    da.add_argument("--db", default="db/scanner.db")
+    da.add_argument("--port", type=int, default=8050)
+    da.set_defaults(func=cmd_dash)
 
     # validate
     v = sp.add_parser("validate", help="Run acceptance gates for a single day")
